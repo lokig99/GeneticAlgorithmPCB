@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace GeneticAlgorithmPCB.GA.Interfaces
+﻿namespace GeneticAlgorithmPCB.GA.Interfaces
 {
-    public interface IFitnessEvaluator<in T>
+    public interface IFitnessEvaluator
     {
-        double Evaluate(T solution);
+        double Evaluate(Solution solution, int boardWidth, int boardHeight);
     }
 }

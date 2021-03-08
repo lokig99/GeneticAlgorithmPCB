@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace GeneticAlgorithmPCB.GA
@@ -48,13 +47,13 @@ namespace GeneticAlgorithmPCB.GA
     {
         public Point StartPoint { get; }
         public Point EndPoint { get; }
-        public LinkedList<Segment> Segments { get; }
+        public List<Segment> Segments { get; }
 
         public Path(Point startPoint, Point endPoint)
         {
             StartPoint = startPoint;
             EndPoint = endPoint;
-            Segments = new LinkedList<Segment>();
+            Segments = new List<Segment>();
         }
     }
 
@@ -69,7 +68,6 @@ namespace GeneticAlgorithmPCB.GA
     public class Solution
     {
         public Path[] Paths { get; set; }
-
         public int TotalLength => Paths.Sum(p => p.Segments.Sum(s => s.Length));
         public int TotalSegmentCount => Paths.Sum(p => p.Segments.Count);
         public int Intersections => GetIntersectionsCount();
