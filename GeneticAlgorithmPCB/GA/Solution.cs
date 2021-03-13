@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using GeneticAlgorithmPCB.GA.Interfaces;
+using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
 namespace GeneticAlgorithmPCB.GA
 {

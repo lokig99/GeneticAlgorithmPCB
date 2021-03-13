@@ -5,10 +5,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using GeneticAlgorithmPCB.GA.Operators.Fitness;
+using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
 namespace GeneticAlgorithmPCB
 {
-    public class Program
+    internal class Program
     {
         public const string OutputDir = "out";
         public const string TmpDir = "tmp";

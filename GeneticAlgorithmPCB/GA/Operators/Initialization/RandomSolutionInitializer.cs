@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Linq;
-using GeneticAlgorithmPCB.GA.Interfaces;
 
-namespace GeneticAlgorithmPCB.GA
+namespace GeneticAlgorithmPCB.GA.Operators.Initialization
 {
     public class RandomSolutionInitializer : ISolutionInitializer
     {

@@ -1,6 +1,4 @@
-﻿using GeneticAlgorithmPCB.GA.Interfaces;
-
-namespace GeneticAlgorithmPCB.GA
+﻿namespace GeneticAlgorithmPCB.GA.Operators.Fitness
 {
     public class WeightedPcbEvaluator : IFitnessEvaluator
     {

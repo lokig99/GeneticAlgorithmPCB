@@ -4,7 +4,7 @@ using System.Text;
 
 namespace GeneticAlgorithmPCB.GA.Interfaces
 {
-    public interface IGenerationCallback
+    public interface IGaCallback
     {
         void Callback(Solution solution, double fitness, int generationNumber, PcbProblem problem,
              Solution[] population);

@@ -1,4 +1,4 @@
-﻿namespace GeneticAlgorithmPCB.GA.Interfaces
+﻿namespace GeneticAlgorithmPCB.GA.Operators.Initialization
 {
     public interface ISolutionInitializer
     {

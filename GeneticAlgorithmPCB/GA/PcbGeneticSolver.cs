@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GeneticAlgorithmPCB.GA.Interfaces;
+using GeneticAlgorithmPCB.GA.Operators.Fitness;
+using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
 namespace GeneticAlgorithmPCB.GA
 {
@@ -60,10 +62,10 @@ namespace GeneticAlgorithmPCB.GA
         public PcbProblem Problem { get; set; }
         private readonly IFitnessEvaluator _fitness;
         private readonly ISolutionInitializer _initializer;
-        private readonly IGenerationCallback _callback;
+        private readonly IGaCallback _callback;
 
         public PcbGeneticSolver(PcbProblem problem, IFitnessEvaluator fitness, ISolutionInitializer initializer,
-            IGenerationCallback callback = null)
+            IGaCallback callback = null)
         {
             Problem = problem;
             _fitness = fitness;

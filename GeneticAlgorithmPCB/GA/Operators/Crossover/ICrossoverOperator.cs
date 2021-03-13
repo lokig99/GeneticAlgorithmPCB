@@ -1,4 +1,4 @@
-﻿namespace GeneticAlgorithmPCB.GA.Interfaces
+﻿namespace GeneticAlgorithmPCB.GA.Operators.Crossover
 {
     public interface ICrossoverOperator
     {

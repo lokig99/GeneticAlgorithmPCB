@@ -8,14 +8,7 @@ namespace GeneticAlgorithmPCB.GA.Utilities
 {
     public static class SolutionSerializer
     {
-        private struct SerializedSolution
-        {
-            public int generation { get; set; }
-            public double fitness { get; set; }
-            public List<int[]>[] paths { get; set; }
-        }
-
-        private static SerializedSolution CreateSerializedSolution(PcbProblem problem, Solution solution,
+        private static object CreateSerializedSolution(PcbProblem problem, Solution solution,
             int generation, double fitness)
         {
             var paths = solution.Paths
@@ -26,8 +19,7 @@ namespace GeneticAlgorithmPCB.GA.Utilities
                 paths[i].Add(new[] { x, y });
             }
 
-            return new SerializedSolution
-            { generation = generation, fitness = fitness, paths = paths };
+            return new { generation, fitness, paths };
         }
 
         public static string SerializeToJson(PcbProblem problem, Solution solution, int generation, double fitness,
