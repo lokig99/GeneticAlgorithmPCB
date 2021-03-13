@@ -19,6 +19,12 @@ namespace GeneticAlgorithmPCB.GA
             PointPairs = points;
         }
 
+        public readonly bool IsPointOutside(Point p)
+        {
+            var (x, y) = p;
+            return x < 0 || y < 0 || x >= BoardWidth || y >= BoardHeight;
+        }
+
         public static PcbProblem LoadProblemFromFile(string path)
         {
             var points = new List<(Point startPoint, Point endPoint)>();
@@ -53,37 +59,54 @@ namespace GeneticAlgorithmPCB.GA
     {
         public PcbProblem Problem { get; set; }
         private readonly IFitnessEvaluator _fitness;
-        private readonly IPopulationInitializer _initializer;
+        private readonly ISolutionInitializer _initializer;
+        private readonly IGenerationCallback _callback;
 
-        public PcbGeneticSolver(PcbProblem problem, IFitnessEvaluator fitness, IPopulationInitializer initializer)
+        public PcbGeneticSolver(PcbProblem problem, IFitnessEvaluator fitness, ISolutionInitializer initializer,
+            IGenerationCallback callback = null)
         {
             Problem = problem;
             _fitness = fitness;
             _initializer = initializer;
+            _callback = callback;
         }
 
-        public ((Solution best, double fitness), LinkedList<(Solution best, double fitness)> history) Solve(
-            int populationSize,
-            int generationLimit)
+        public ((Solution best, double fitness, int generation),
+            LinkedList<(Solution solution, double fitness, int generation)> history) Solve(
+                int populationSize,
+                int generationLimit)
         {
-            var population = _initializer.Initialize(Problem, populationSize);
-            var generation = 0;
+            var population = InitializePopulation(Problem, populationSize, _initializer);
+            var generation = 1;
             var best = BestSolution(population);
-            var history = new LinkedList<(Solution best, double fitness)>();
+            var history = new LinkedList<(Solution best, double fitness, int generation)>();
             history.AddLast(best);
 
             while (generation < generationLimit)
             {
-                population = _initializer.Initialize(Problem, populationSize);
+                generation++;
+                population = InitializePopulation(Problem, populationSize, _initializer);
                 var tmpBest = BestSolution(population);
                 history.AddLast(tmpBest);
                 if (tmpBest.fitness < best.fitness)
                     best = tmpBest;
-                generation++;
+                _callback?.Callback(tmpBest.solution, tmpBest.fitness, generation, Problem, population);
             }
+
             return (best, history);
 
-            (Solution best, double fitness) BestSolution(Solution[] pop)
+            static Solution[] InitializePopulation(PcbProblem problem, int size, ISolutionInitializer init)
+            {
+                var population = new Solution[size];
+                for (var i = 0; i < size; i++)
+                {
+                    population[i] = new Solution(problem, init);
+                }
+
+                return population;
+            }
+
+            (Solution solution, double fitness, int generation) BestSolution(IEnumerable<Solution> pop)
             {
                 var solEvaluated = pop.Select(s => new
                 { s, fitness = _fitness.Evaluate(s, Problem.BoardWidth, Problem.BoardHeight) }).ToArray();
@@ -95,7 +118,7 @@ namespace GeneticAlgorithmPCB.GA
                         tmpBest = solEvaluated[i];
                 }
 
-                return (tmpBest.s, tmpBest.fitness);
+                return (tmpBest.s, tmpBest.fitness, generation);
             }
         }
     }

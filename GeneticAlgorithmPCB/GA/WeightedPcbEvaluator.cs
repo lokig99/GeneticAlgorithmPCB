@@ -12,10 +12,11 @@ namespace GeneticAlgorithmPCB.GA
 
         public double Evaluate(Solution solution, int boardWidth, int boardHeight)
         {
-            var (sobCount, fobLength) = solution.SegmentsOutsideBoardStats(boardWidth, boardHeight);
-            return solution.Intersections * IntersectionWeight + solution.TotalLength * TotalLengthWeight +
-                   solution.TotalSegmentCount * SegmentCountWeight + sobCount * SegmentsOutsideBoardWeight +
-                   fobLength * FragmentsOutsideBoardWeight;
+            var (sobCount, fobLength) = solution.SegmentsOutsideBoardStats;
+            var fitness = solution.Intersections * IntersectionWeight + solution.TotalLength * TotalLengthWeight +
+                          solution.TotalSegmentCount * SegmentCountWeight + sobCount * SegmentsOutsideBoardWeight +
+                          fobLength * FragmentsOutsideBoardWeight;
+            return fitness;
         }
     }
 }

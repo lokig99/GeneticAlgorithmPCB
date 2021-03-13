@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using GeneticAlgorithmPCB.GA.Interfaces;
 
 namespace GeneticAlgorithmPCB.GA
 {
@@ -18,42 +20,112 @@ namespace GeneticAlgorithmPCB.GA
             x = X;
             y = Y;
         }
-    }
 
-    public struct Segment
-    {
-        public Point StartPoint { get; set; }
-
-        public Point EndPoint => Dir switch
+        public static double Distance(Point p1, Point p2)
         {
-            Direction.Left => new Point(StartPoint.X - Length, StartPoint.Y),
-            Direction.Right => new Point(StartPoint.X + Length, StartPoint.Y),
-            Direction.Up => new Point(StartPoint.X, StartPoint.Y - Length),
-            _ => new Point(StartPoint.X, StartPoint.Y + Length)
-        };
-
-        public Direction Dir { get; set; }
-        public int Length { get; set; }
-
-        public Segment(Point startPoint, Direction dir, int length)
-        {
-            StartPoint = startPoint;
-            Dir = dir;
-            Length = length;
+            var (x, y) = p1;
+            var (x2, y2) = p2;
+            return Math.Sqrt(Math.Pow(x - x2, 2) + Math.Pow(y - y2, 2));
         }
     }
 
-    public class Path
+    public class Segment : ICloneable<Segment>
+    {
+        private int _length;
+        private Point _endPoint;
+        private Point _startPoint;
+        private Direction _direction;
+
+        public Point StartPoint
+        {
+            get => _startPoint;
+            set
+            {
+                _startPoint = value;
+                _length = (int)Point.Distance(StartPoint, EndPoint);
+            }
+        }
+
+        public Point EndPoint
+        {
+            get => _endPoint;
+            set
+            {
+                _endPoint = value;
+                _length = (int)Point.Distance(StartPoint, EndPoint);
+            }
+        }
+
+        public Direction Direction
+        {
+            get => _direction;
+            set
+            {
+                _direction = value;
+                _endPoint = CalculateEndPoint();
+            }
+        }
+
+        public int Length
+        {
+            get => _length;
+            set
+            {
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value));
+                _length = value;
+                EndPoint = CalculateEndPoint();
+            }
+        }
+
+        public Segment(Point startPoint, Direction direction, int length)
+        {
+            _startPoint = startPoint;
+            _direction = direction;
+            _length = length;
+            _endPoint = CalculateEndPoint();
+        }
+
+        private Point CalculateEndPoint()
+        {
+            return Direction switch
+            {
+                Direction.Left => new Point(StartPoint.X - Length, StartPoint.Y),
+                Direction.Right => new Point(StartPoint.X + Length, StartPoint.Y),
+                Direction.Up => new Point(StartPoint.X, StartPoint.Y - Length),
+                _ => new Point(StartPoint.X, StartPoint.Y + Length)
+            };
+        }
+
+        public Segment Clone()
+        {
+            return new Segment(StartPoint, Direction, Length);
+        }
+    }
+
+    public class Path : ICloneable<Path>
     {
         public Point StartPoint { get; }
         public Point EndPoint { get; }
-        public List<Segment> Segments { get; }
+        public List<Segment> Segments { get; set; }
 
         public Path(Point startPoint, Point endPoint)
         {
             StartPoint = startPoint;
             EndPoint = endPoint;
             Segments = new List<Segment>();
+        }
+
+        private Path(Point startPoint, Point endPoint, List<Segment> segments)
+        {
+            StartPoint = startPoint;
+            EndPoint = endPoint;
+            Segments = segments;
+        }
+
+        public Path Clone()
+        {
+            var segmentsClones = Segments.ConvertAll(s => s.Clone());
+            return new Path(StartPoint, EndPoint, segmentsClones);
         }
     }
 
@@ -62,7 +134,9 @@ namespace GeneticAlgorithmPCB.GA
         Left,
         Right,
         Up,
-        Down
+        Down,
+        Vertical,
+        Horizontal
     }
 
     public class Solution
@@ -71,40 +145,51 @@ namespace GeneticAlgorithmPCB.GA
         public int TotalLength => Paths.Sum(p => p.Segments.Sum(s => s.Length));
         public int TotalSegmentCount => Paths.Sum(p => p.Segments.Count);
         public int Intersections => GetIntersectionsCount();
+        public (int count, int length) SegmentsOutsideBoardStats => GetSegmentsOutsideBoardStats();
+        public PcbProblem Problem { get; set; }
 
 
-        public Solution(Path[] paths)
+        public Solution(PcbProblem problem, ISolutionInitializer initializer)
         {
-            Paths = paths;
+            Paths = new Path[problem.PointPairs.Count];
+            Problem = problem;
+            ResetSolution(initializer);
         }
 
-        private IEnumerable<Segment> GetSegmentsOutsideBoard(int boardWidth, int boardHeight)
+        public Solution(PcbProblem problem, Path[] paths)
+        {
+            Paths = paths;
+            Problem = problem;
+        }
+
+        public void ResetSolution(ISolutionInitializer initializer)
+        {
+            initializer.Initialize(this);
+        }
+
+        private IEnumerable<Segment> GetSegmentsOutsideBoard()
         {
             return Paths.SelectMany(p => p.Segments).Where(IsOutside);
 
             bool IsOutside(Segment s)
             {
-                return IsPointOutside(s.StartPoint, boardWidth, boardHeight) ||
-                       IsPointOutside(s.EndPoint, boardWidth, boardHeight);
+                return Problem.IsPointOutside(s.StartPoint) ||
+                       Problem.IsPointOutside(s.EndPoint);
             }
         }
 
-        private static bool IsPointOutside(Point p, int boardWidth, int boardHeight)
-        {
-            var (x, y) = p;
-            return x < 0 || y < 0 || x > boardWidth || y > boardHeight;
-        }
 
-        public (int count, int length) SegmentsOutsideBoardStats(int boardWidth, int boardHeight)
+
+        private (int count, int length) GetSegmentsOutsideBoardStats()
         {
-            var segments = GetSegmentsOutsideBoard(boardWidth, boardHeight).ToArray();
+            var segments = GetSegmentsOutsideBoard().ToArray();
             return (segments.Length, segments.Sum(LengthOutside));
 
             int LengthOutside(Segment s)
             {
                 return
-                    (IsPointOutside(s.StartPoint, boardWidth, boardHeight) &&
-                     IsPointOutside(s.EndPoint, boardWidth, boardHeight)) switch
+                    (Problem.IsPointOutside(s.StartPoint) &&
+                     Problem.IsPointOutside(s.EndPoint)) switch
                     {
                         true => s.Length,
                         _ => GetFragmentLength(s)
@@ -113,16 +198,16 @@ namespace GeneticAlgorithmPCB.GA
 
             int GetFragmentLength(Segment s)
             {
-                return (s.Dir, IsPointOutside(s.StartPoint, boardWidth, boardHeight)) switch
+                return (Dir: s.Direction, Problem.IsPointOutside(s.StartPoint)) switch
                 {
-                    (Direction.Up, true) => s.StartPoint.Y - boardHeight,
+                    (Direction.Up, true) => s.StartPoint.Y - (Problem.BoardHeight - 1),
                     (Direction.Up, false) => 0 - s.EndPoint.Y,
                     (Direction.Down, true) => 0 - s.StartPoint.Y,
-                    (Direction.Down, false) => s.EndPoint.Y - boardHeight,
-                    (Direction.Left, true) => s.StartPoint.X - boardWidth,
+                    (Direction.Down, false) => s.EndPoint.Y - (Problem.BoardHeight - 1),
+                    (Direction.Left, true) => s.StartPoint.X - (Problem.BoardWidth - 1),
                     (Direction.Left, false) => 0 - s.EndPoint.X,
                     (Direction.Right, true) => 0 - s.StartPoint.X,
-                    _ => s.EndPoint.X - boardHeight
+                    _ => s.EndPoint.X - (Problem.BoardWidth - 1)
                 };
             }
         }
@@ -131,22 +216,28 @@ namespace GeneticAlgorithmPCB.GA
         {
             var pointsCounter = new Dictionary<Point, int>();
 
-            var segments = Paths.SelectMany(p => p.Segments);
-            foreach (var s in segments)
+            foreach (var path in Paths)
             {
-                var (sx, sy) = s.StartPoint;
-                var (dx, dy) = s.Dir switch
-                {
-                    Direction.Up => (0, -1),
-                    Direction.Down => (0, 1),
-                    Direction.Left => (-1, 0),
-                    _ => (1, 0)
-                };
+                // include path's start point
+                pointsCounter[path.StartPoint] = pointsCounter.GetValueOrDefault(path.StartPoint, -1) + 1;
 
-                for (var i = 0; i <= s.Length; i++)
+                foreach (var s in path.Segments)
                 {
-                    var tmp = new Point(sx + dx * i, sy + dy * i);
-                    pointsCounter[tmp] = pointsCounter.GetValueOrDefault(tmp, -1) + 1;
+                    var (sx, sy) = s.StartPoint;
+                    var (dx, dy) = s.Direction switch
+                    {
+                        Direction.Up => (0, -1),
+                        Direction.Down => (0, 1),
+                        Direction.Left => (-1, 0),
+                        _ => (1, 0)
+                    };
+
+
+                    for (var i = 1; i <= s.Length; i++)
+                    {
+                        var tmp = new Point(sx + dx * i, sy + dy * i);
+                        pointsCounter[tmp] = pointsCounter.GetValueOrDefault(tmp, -1) + 1;
+                    }
                 }
             }
 
