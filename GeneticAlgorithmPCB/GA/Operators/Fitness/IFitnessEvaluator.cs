@@ -2,6 +2,6 @@
 {
     public interface IFitnessEvaluator
     {
-        double Evaluate(Solution solution, int boardWidth, int boardHeight);
+        double Evaluate(in Solution solution);
     }
 }

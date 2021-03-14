@@ -4,6 +4,6 @@ namespace GeneticAlgorithmPCB.GA.Operators.Selection
 {
     public interface ISelectionOperator
     {
-        Solution Selection(ICollection<Solution> population);
+        (Solution parent1, Solution parent2) Selection(ICollection<Solution> population);
     }
 }

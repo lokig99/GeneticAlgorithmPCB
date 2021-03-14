@@ -140,7 +140,7 @@ namespace GeneticAlgorithmPCB.GA
         Horizontal
     }
 
-    public class Solution
+    public class Solution : ICloneable<Solution>
     {
         public Path[] Paths { get; set; }
         public int TotalLength => Paths.Sum(p => p.Segments.Sum(s => s.Length));
@@ -150,10 +150,14 @@ namespace GeneticAlgorithmPCB.GA
         public PcbProblem Problem { get; set; }
 
 
-        public Solution(PcbProblem problem, ISolutionInitializer initializer)
+        public Solution(PcbProblem problem)
         {
             Paths = new Path[problem.PointPairs.Count];
             Problem = problem;
+        }
+
+        public Solution(PcbProblem problem, ISolutionInitializer initializer) : this(problem)
+        {
             ResetSolution(initializer);
         }
 
@@ -162,6 +166,7 @@ namespace GeneticAlgorithmPCB.GA
             Paths = paths;
             Problem = problem;
         }
+
 
         public void ResetSolution(ISolutionInitializer initializer)
         {
@@ -178,7 +183,6 @@ namespace GeneticAlgorithmPCB.GA
                        Problem.IsPointOutside(s.EndPoint);
             }
         }
-
 
 
         private (int count, int length) GetSegmentsOutsideBoardStats()
@@ -243,6 +247,11 @@ namespace GeneticAlgorithmPCB.GA
             }
 
             return pointsCounter.Values.Sum();
+        }
+
+        public Solution Clone()
+        {
+            return new Solution(Problem, Paths.Select(p => p.Clone()).ToArray());
         }
     }
 }

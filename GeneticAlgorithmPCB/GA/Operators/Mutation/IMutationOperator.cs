@@ -2,6 +2,6 @@
 {
     public interface IMutationOperator
     {
-        Solution Mutation(Solution solution, double probability);
+        void Mutation(in Solution solution, in double probability = 0.5);
     }
 }

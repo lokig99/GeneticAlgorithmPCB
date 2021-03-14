@@ -154,10 +154,10 @@ def create_video(input: dict, output_path: str):
     labels: List[str] = []
     for solution in input['data']:
         label = ''
-        if 'generation' in solution:
-            label += f'G={solution["generation"]} '
-        if 'fitness' in solution:
-            label += f'F={round(solution["fitness"], 3)} '
+        if 'gen' in solution:
+            label += f'G={solution["gen"]} '
+        if 'fit' in solution:
+            label += f'F={round(solution["fit"], 3)} '
         labels.append(label)
 
     # find longest label
