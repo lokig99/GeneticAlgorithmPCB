@@ -5,94 +5,54 @@ namespace GeneticAlgorithmPCB.GA.Operators.Initialization
 {
     public class RandomSolutionInitializer : ISolutionInitializer
     {
-        public void Initialize(in Solution solution, int? seed = null)
+        public Random RandomGenerator { get; set; } = new Random();
+        private const int MaxLength = 5;
+
+
+        public void Initialize(in Solution solution)
         {
             solution.Paths = new Path[solution.Problem.PointPairs.Count];
 
-            var rand = seed is null ? new Random() : new Random((int)seed);
-            const int maxLength = 5;
-
             for (var i = 0; i < solution.Paths.Length; i++)
             {
-                var (startPoint, endPoint) = solution.Problem.PointPairs[i];
-                var path = solution.Paths[i] = new Path(startPoint, endPoint);
-                var headToEndProb = rand.Next(0, 100);
-                path.Segments.Add(RandomSegment(startPoint, path, ref headToEndProb));
+                solution.Paths[i] = GeneratePath(solution, i);
+            }
+        }
 
-                while (!HasReachedTarget(path))
+        public Path GeneratePath(Solution solution, int pathIndex)
+        {
+            var (startPoint, endPoint) = solution.Problem.PointPairs[pathIndex];
+            var path = new Path(startPoint, endPoint);
+            var headToEndProb = RandomGenerator.Next(0, 100);
+            path.Segments.Add(RandomSegment(startPoint));
+
+            while (!HasReachedTarget(path))
+            {
+                var prevSegment = path.Segments.Last();
+                var segment = RandomSegment(prevSegment.EndPoint);
+
+                if (segment.Direction.GeneralDirection() == prevSegment.Direction.GeneralDirection())
                 {
-                    var prevSegment = path.Segments.Last();
-                    var segment = RandomSegment(prevSegment.EndPoint, path, ref headToEndProb);
-
-                    if (GeneralDirection(segment.Direction) == GeneralDirection(prevSegment.Direction))
+                    if (segment.Direction == prevSegment.Direction)
                     {
-                        if (segment.Direction == prevSegment.Direction)
-                        {
-                            prevSegment.Length += segment.Length;
-                        }
-                        else
-                        {
-                            var tmp = prevSegment.Length - segment.Length;
-                            prevSegment.Length = tmp > 0 ? tmp : 1;
-                        }
-
-                        continue;
+                        prevSegment.Length += segment.Length;
+                    }
+                    else
+                    {
+                        var tmp = prevSegment.Length - segment.Length;
+                        prevSegment.Length = tmp > 0 ? tmp : 1;
                     }
 
-                    path.Segments.Add(segment);
-                }
-            }
-
-            Segment RandomSegment(Point startPoint, Path path, ref int headToEndProb)
-            {
-                var len = rand.Next(1, maxLength + 1);
-                var dir = rand.Next(0, 2) switch
-                {
-                    0 => Direction.Horizontal,
-                    _ => Direction.Vertical
-                };
-
-                // choose between going randomly and heading towards end point
-                if (headToEndProb >= rand.Next(0, 100))
-                {
-                    // head toward end point
-                    if (dir == Direction.Horizontal)
-                        dir = path.EndPoint.X >= startPoint.X ? Direction.Right : Direction.Left;
-                    else
-                        dir = path.EndPoint.Y >= startPoint.Y ? Direction.Down : Direction.Up;
-                }
-                else
-                {
-                    // go randomly
-                    dir = (dir, rand.Next(0, 2)) switch
-                    {
-                        (Direction.Horizontal, 0) => Direction.Left,
-                        (Direction.Horizontal, 1) => Direction.Right,
-                        (Direction.Vertical, 0) => Direction.Down,
-                        _ => Direction.Up
-                    };
-
-                    // increase probability to go towards end point next time
-                    headToEndProb = Math.Min(headToEndProb + rand.Next(0, 100), 100);
+                    continue;
                 }
 
-                return new Segment(startPoint, dir, len);
-            }
-
-            static Direction GeneralDirection(Direction dir)
-            {
-                return dir switch
-                {
-                    Direction.Left => Direction.Horizontal,
-                    Direction.Right => Direction.Horizontal,
-                    _ => Direction.Vertical
-                };
+                path.Segments.Add(segment);
             }
 
             static bool HasReachedTarget(Path path)
             {
                 var lastSegment = path.Segments.Last();
-                var isReached = GeneralDirection(lastSegment.Direction) switch
+                var isReached = (lastSegment.Direction.GeneralDirection()) switch
                 {
                     Direction.Horizontal => path.EndPoint.Y == lastSegment.StartPoint.Y &&
                                             path.EndPoint.X >= Math.Min(lastSegment.StartPoint.X,
@@ -105,9 +65,49 @@ namespace GeneticAlgorithmPCB.GA.Operators.Initialization
                 };
 
                 if (!isReached) return false;
-                lastSegment.EndPoint = path.EndPoint;
+
+                lastSegment.Length = (int)Point.Distance(lastSegment.StartPoint, path.EndPoint);
                 return true;
             }
+
+            Segment RandomSegment(Point start)
+            {
+                var len = RandomGenerator.Next(1, MaxLength + 1);
+                var dir = RandomGenerator.Next(0, 2) switch
+                {
+                    0 => Direction.Horizontal,
+                    _ => Direction.Vertical
+                };
+
+                // choose between going randomly and heading towards end point
+                if (headToEndProb >= RandomGenerator.Next(0, 100))
+                {
+                    // head toward end point
+                    var (x, y) = start;
+                    if (dir == Direction.Horizontal)
+                        dir = path.EndPoint.X >= x ? Direction.Right : Direction.Left;
+                    else
+                        dir = path.EndPoint.Y >= y ? Direction.Down : Direction.Up;
+                }
+                else
+                {
+                    // go randomly
+                    dir = (dir, RandomGenerator.Next(0, 2)) switch
+                    {
+                        (Direction.Horizontal, 0) => Direction.Left,
+                        (Direction.Horizontal, 1) => Direction.Right,
+                        (Direction.Vertical, 0) => Direction.Down,
+                        _ => Direction.Up
+                    };
+
+                    // increase probability to go towards end point next time
+                    headToEndProb = Math.Min(headToEndProb + RandomGenerator.Next(0, 100), 100);
+                }
+
+                return new Segment(start, dir, len);
+            }
+
+            return path;
         }
     }
 }

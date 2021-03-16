@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using GeneticAlgorithmPCB.GA.Interfaces;
 using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
@@ -28,44 +29,29 @@ namespace GeneticAlgorithmPCB.GA
             var (x2, y2) = p2;
             return Math.Sqrt(Math.Pow(x - x2, 2) + Math.Pow(y - y2, 2));
         }
+
+        public override string ToString()
+        {
+            return $"[{X}, {Y}]";
+        }
     }
 
     public class Segment : ICloneable<Segment>
     {
         private int _length;
-        private Point _endPoint;
-        private Point _startPoint;
-        private Direction _direction;
 
-        public Point StartPoint
-        {
-            get => _startPoint;
-            set
-            {
-                _startPoint = value;
-                _length = (int)Point.Distance(StartPoint, EndPoint);
-            }
-        }
+        public Point StartPoint { get; set; }
 
-        public Point EndPoint
-        {
-            get => _endPoint;
-            set
+        public Point EndPoint =>
+            Direction switch
             {
-                _endPoint = value;
-                _length = (int)Point.Distance(StartPoint, EndPoint);
-            }
-        }
+                Direction.Left => new Point(StartPoint.X - Length, StartPoint.Y),
+                Direction.Right => new Point(StartPoint.X + Length, StartPoint.Y),
+                Direction.Up => new Point(StartPoint.X, StartPoint.Y - Length),
+                _ => new Point(StartPoint.X, StartPoint.Y + Length)
+            };
 
-        public Direction Direction
-        {
-            get => _direction;
-            set
-            {
-                _direction = value;
-                _endPoint = CalculateEndPoint();
-            }
-        }
+        public Direction Direction { get; set; }
 
         public int Length
         {
@@ -74,32 +60,24 @@ namespace GeneticAlgorithmPCB.GA
             {
                 if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value));
                 _length = value;
-                EndPoint = CalculateEndPoint();
             }
         }
 
         public Segment(Point startPoint, Direction direction, int length)
         {
-            _startPoint = startPoint;
-            _direction = direction;
+            StartPoint = startPoint;
+            Direction = direction;
             _length = length;
-            _endPoint = CalculateEndPoint();
-        }
-
-        private Point CalculateEndPoint()
-        {
-            return Direction switch
-            {
-                Direction.Left => new Point(StartPoint.X - Length, StartPoint.Y),
-                Direction.Right => new Point(StartPoint.X + Length, StartPoint.Y),
-                Direction.Up => new Point(StartPoint.X, StartPoint.Y - Length),
-                _ => new Point(StartPoint.X, StartPoint.Y + Length)
-            };
         }
 
         public Segment Clone()
         {
             return new Segment(StartPoint, Direction, Length);
+        }
+
+        public override string ToString()
+        {
+            return $"{StartPoint} -> {EndPoint} {Direction} L={Length}";
         }
     }
 
@@ -138,6 +116,33 @@ namespace GeneticAlgorithmPCB.GA
         Down,
         Vertical,
         Horizontal
+    }
+
+    static class DirectionMethods
+    {
+        public static Direction OppositeDirection(this Direction dir)
+        {
+            return dir switch
+            {
+                Direction.Left => Direction.Right,
+                Direction.Right => Direction.Left,
+                Direction.Up => Direction.Down,
+                Direction.Down => Direction.Up,
+                _ => dir
+            };
+        }
+
+        public static Direction GeneralDirection(this Direction dir)
+        {
+            return dir switch
+            {
+                Direction.Left => Direction.Horizontal,
+                Direction.Right => Direction.Horizontal,
+                Direction.Up => Direction.Vertical,
+                Direction.Down => Direction.Vertical,
+                _ => dir
+            };
+        }
     }
 
     public class Solution : ICloneable<Solution>

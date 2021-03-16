@@ -1,7 +1,10 @@
-﻿namespace GeneticAlgorithmPCB.GA.Operators.Mutation
+﻿using GeneticAlgorithmPCB.GA.Interfaces;
+using GeneticAlgorithmPCB.GA.Operators.Initialization;
+
+namespace GeneticAlgorithmPCB.GA.Operators.Mutation
 {
-    public interface IMutationOperator
+    public interface IMutationOperator : IRandom
     {
-        void Mutation(in Solution solution, in double probability = 0.5);
+        void Mutation(Solution solution, ISolutionInitializer initializer);
     }
 }

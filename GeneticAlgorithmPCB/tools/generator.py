@@ -131,6 +131,15 @@ class BoardDrawer:
     def get_image(self) -> Image.Image:
         return self.__img.copy()
 
+    @staticmethod
+    def create_label(config: dict) -> str:
+        label = ''
+        if 'gen' in config:
+            label += f'G={config["gen"]} '
+        if 'fit' in config:
+            label += f'F={round(config["fit"], 3)} '
+        return label
+
 
 def create_video(input: dict, output_path: str):
     board = input['board']
@@ -153,11 +162,7 @@ def create_video(input: dict, output_path: str):
     # create image labels
     labels: List[str] = []
     for solution in input['data']:
-        label = ''
-        if 'gen' in solution:
-            label += f'G={solution["gen"]} '
-        if 'fit' in solution:
-            label += f'F={round(solution["fit"], 3)} '
+        label = BoardDrawer.create_label(solution)
         labels.append(label)
 
     # find longest label
@@ -183,28 +188,42 @@ def create_video(input: dict, output_path: str):
     cv2.destroyAllWindows()
     video.release()
 
-    os.startfile(f'{ROOT}/{output_path}')
+    os.startfile(output_path)
 
 
-def main() -> int:
+def main():
     def usage():
-        print("usage: generate.py <input (*.json)> [<output> (*.avi)]")
-        return 1
+        print(
+            "usage: generator.py image|video <input (*.json)> [<output> (*.png|*.avi)]")
+        return sys.exit(-1)
 
     argv = sys.argv[1:]
     output_path = ''
-    if len(argv) != 2:
+    if len(argv) != 3:
         return usage()
 
-    # first must be .json file
-    if not (json_path := argv.pop(0)).lower().endswith('.json'):
+    # get .json config
+    if not (json_path := argv.pop(1)).lower().endswith('.json'):
         return usage()
-    # then get the output file path
-    output_path = argv.pop(0)
 
     with open(json_path, 'r') as file:
-        create_video(json.load(file), output_path)
-    return 0
+        config = json.load(file)
+
+    # then get the output file path
+    output_path = os.path.join(ROOT, argv.pop(1))
+
+    # check the operation mode
+    if (mode := argv.pop(0)) == 'video':
+        create_video(config, output_path)
+    elif mode == 'image':
+        label = BoardDrawer.create_label(config)
+        img = BoardDrawer(config, label).get_image()
+        img.save(output_path)
+        os.startfile(output_path)
+    else:
+        usage()
+    
+    sys.exit(0)
 
 
 if __name__ == '__main__':

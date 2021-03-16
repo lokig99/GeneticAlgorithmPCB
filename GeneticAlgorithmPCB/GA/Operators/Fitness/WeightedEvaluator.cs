@@ -1,4 +1,7 @@
-﻿namespace GeneticAlgorithmPCB.GA.Operators.Fitness
+﻿using System;
+using GeneticAlgorithmPCB.GA.Interfaces;
+
+namespace GeneticAlgorithmPCB.GA.Operators.Fitness
 {
     public class WeightedEvaluator : IFitnessEvaluator
     {
@@ -18,5 +21,6 @@
                           + fobLength * FragmentsOutsideBoardWeight;
             return fitness;
         }
+
     }
 }

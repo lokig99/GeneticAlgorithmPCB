@@ -35,69 +35,78 @@ namespace GeneticAlgorithmPCB.GA
 
         public (Solution best, double fitness, int generation) Solve(int populationSize, int generationLimit)
         {
-            if (populationSize <= 0) throw new ArgumentOutOfRangeException(nameof(populationSize));
+            if (populationSize <= 1) throw new ArgumentOutOfRangeException(nameof(populationSize));
             if (generationLimit <= 0) throw new ArgumentOutOfRangeException(nameof(generationLimit));
 
             var population = InitializePopulation();
             var generation = 0;
             var best = BestSolution(population);
+            var genBest = (best.solution, best.fitness);
+            var genWorstFitness = WorstFitness(population);
 
             while (generation < generationLimit)
             {
                 generation++;
-                (Solution Solution, double fitness)? generationBest = null;
-                var newPopulation = new List<Solution>(populationSize);
-                var generationIndividualFitness = new LinkedList<double>();
-                var worstFitness = double.MinValue;
+                var newPopulation = new List<(Solution sol, double fitness)>(populationSize);
+                var currentWorstFitness = double.MinValue;
+                (Solution solution, double fitness)? currentBest = null;
 
                 do
                 {
-                    var (parent1, _) = _selection.Selection(population);
+                    var (parent1, _) = _selection.Selection(population, genBest, genWorstFitness);
                     var child = _crossover.Crossover(parent1, parent1);
 
-                    _mutation.Mutation(child);
+                    _mutation.Mutation(child, _initializer);
 
                     var fitness = _fitness.Evaluate(child);
-                    generationIndividualFitness.AddLast(fitness);
-                    if (fitness < best.fitness)
-                        best = (child, fitness, generation);
 
-                    newPopulation.Add(child);
+                    newPopulation.Add((child, fitness));
 
-                    if (fitness > worstFitness)
-                        worstFitness = fitness;
+                    if (fitness > currentWorstFitness)
+                        currentWorstFitness = fitness;
 
-                    generationBest ??= (child, fitness);
-                    if (fitness < generationBest.Value.fitness)
-                        generationBest = (child, fitness);
+                    currentBest ??= (child, fitness);
+                    if (fitness < currentBest.Value.fitness)
+                        currentBest = (child, fitness);
                 } while (newPopulation.Count != populationSize);
 
-                population = newPopulation;
+                var (sol, fit) = currentBest.Value;
+                if (currentBest.Value.fitness < best.fitness)
+                    best = (sol.Clone(), fit, generation);
 
-                var (sol, fit) = generationBest.Value;
+                population = newPopulation;
+                genWorstFitness = currentWorstFitness;
+                genBest = ((Solution solution, double fitness))currentBest;
+
                 foreach (var c in _callbacks)
                 {
-                    c.Callback(sol, fit, worstFitness, generation, generationIndividualFitness);
+                    c.Callback(sol, best.fitness, fit, genWorstFitness,
+                        generation, population);
                 }
             }
 
             return best;
 
-            List<Solution> InitializePopulation()
+            List<(Solution sol, double fitness)> InitializePopulation()
             {
                 return Enumerable.Range(0, populationSize)
-                    .Select(_ => new Solution(Problem, _initializer)).ToList();
+                    .Select(_ => new Solution(Problem, _initializer))
+                    .Select(s => (s, _fitness.Evaluate(s)))
+                    .ToList();
             }
 
-            (Solution solution, double fitness, int generation) BestSolution(IEnumerable<Solution> pop)
+            (Solution solution, double fitness, int generation) BestSolution(
+                IReadOnlyCollection<(Solution sol, double fitness)> pop)
             {
-                var solutionsEvaluated = pop.Select(s => new
-                { s, fitness = _fitness.Evaluate(s) }).ToArray();
+                var (sol, fitness) = pop.First(s =>
+                    Math.Abs(s.fitness - pop.Min(pair => pair.fitness)) < 0.0001);
 
-                var tmpBest = solutionsEvaluated.First(s =>
-                    Math.Abs(s.fitness - solutionsEvaluated.Min(pair => pair.fitness)) < 0.0001);
+                return (sol.Clone(), fitness, generation);
+            }
 
-                return (tmpBest.s, tmpBest.fitness, generation);
+            static double WorstFitness(IEnumerable<(Solution sol, double fitness)> pop)
+            {
+                return pop.Max(p => p.fitness);
             }
         }
     }

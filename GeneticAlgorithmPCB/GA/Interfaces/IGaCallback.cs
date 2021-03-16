@@ -6,7 +6,7 @@ namespace GeneticAlgorithmPCB.GA.Interfaces
 {
     public interface IGaCallback
     {
-        void Callback(Solution genBestSolution, double bestFitness, double worstFitness, int generationNumber,
-            ICollection<double> generationIndividualsFitness);
+        void Callback(Solution genBestSolution, double allBestFitness, double genBestFitness, double genWorstFitness, int generationNumber,
+            ICollection<(Solution solution, double fitness)> population);
     }
 }

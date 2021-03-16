@@ -39,16 +39,22 @@ namespace GeneticAlgorithmPCB.GA.Utilities
             _history.Clear();
         }
 
+        public static (int[] board, int[][] points) SerializeProblem(PcbProblem problem)
+        {
+            var board = new[] { problem.BoardWidth, problem.BoardHeight };
+            var points = problem.PointPairs
+                .SelectMany(pair => new[] { pair.startPoint, pair.endPoint })
+                .Select(p => new[] { p.X, p.Y }).ToArray();
+            return (board, points);
+        }
+
         private void SerializeChunk(IEnumerable historyCopy)
         {
             string jsonData;
 
             if (_chunkCount == 0)
             {
-                var board = new[] { _problem.BoardWidth, _problem.BoardHeight };
-                var points = _problem.PointPairs
-                    .SelectMany(pair => new[] { pair.startPoint, pair.endPoint })
-                    .Select(p => new[] { p.X, p.Y }).ToArray();
+                var (board, points) = SerializeProblem(_problem);
                 jsonData = JsonSerializer.Serialize(new { board, points, data = historyCopy });
             }
             else
@@ -62,12 +68,55 @@ namespace GeneticAlgorithmPCB.GA.Utilities
             File.WriteAllText(path, jsonData);
         }
 
-        public void Callback(Solution genBestSolution, double bestFitness, double worstFitness,
-            int generationNumber,
-            ICollection<double> generationIndividualsFitness)
+        public void WriteSerializedSolution(string path, Solution solution, int generation, double fitness)
         {
-            _history.AddLast(CreateSerializedSolution(genBestSolution, generationNumber, bestFitness,
-                generationIndividualsFitness, worstFitness));
+            // generate image of best solution
+            var serializedObject =
+                GaSerializer.CreateSerializedSolution(solution, generation, fitness, includeProblemInfo: true);
+
+            File.WriteAllText(path, JsonSerializer.Serialize(serializedObject));
+        }
+
+        public static object CreateSerializedSolution(Solution solution, int? generationNumber,
+            double bestFitness = 0, double avgFitness = 0, double worstFitness = 0, bool includeProblemInfo = false)
+        {
+            var paths = solution.Paths
+                .Select(p => p.Segments.Select(s => new[] { s.StartPoint.X, s.StartPoint.Y }).ToList()).ToArray();
+            for (var i = 0; i < paths.Length; i++)
+            {
+                var (x, y) = solution.Problem.PointPairs[i].endPoint;
+                paths[i].Add(new[] { x, y });
+            }
+
+            if (!includeProblemInfo)
+                return new
+                {
+                    gen = generationNumber,
+                    fit = bestFitness,
+                    paths,
+                    gAvg = avgFitness,
+                    wtF = worstFitness
+                };
+
+            var (board, points) = SerializeProblem(solution.Problem);
+            return new
+            {
+                board = new[] { solution.Problem.BoardWidth, solution.Problem.BoardHeight },
+                points,
+                gen = generationNumber,
+                fit = bestFitness,
+                paths,
+                gAvg = avgFitness,
+                wtF = worstFitness
+            };
+        }
+
+        public void Callback(Solution genBestSolution, double allBestFitness, double genBestFitness,
+            double genWorstFitness,
+            int generationNumber, ICollection<(Solution solution, double fitness)> population)
+        {
+            _history.AddLast(CreateSerializedSolution(genBestSolution, generationNumber, genBestFitness,
+                population.Average(p => p.fitness), genWorstFitness));
 
             if (_history.Count < ChunkSize) return;
 
@@ -75,28 +124,6 @@ namespace GeneticAlgorithmPCB.GA.Utilities
             _history.CopyTo(historyCopy, 0);
             _tasks.AddLast(Task.Run(() => SerializeChunk(historyCopy)));
             _history.Clear();
-        }
-
-        private static object CreateSerializedSolution(Solution genBestSolution, int generationNumber,
-            double bestFitness,
-            IEnumerable<double> generationIndividualsFitness, double worstFitness)
-        {
-            var paths = genBestSolution.Paths
-                .Select(p => p.Segments.Select(s => new[] { s.StartPoint.X, s.StartPoint.Y }).ToList()).ToArray();
-            for (var i = 0; i < paths.Length; i++)
-            {
-                var (x, y) = genBestSolution.Problem.PointPairs[i].endPoint;
-                paths[i].Add(new[] { x, y });
-            }
-
-            return new
-            {
-                gen = generationNumber,
-                fit = bestFitness,
-                paths,
-                gAvg = generationIndividualsFitness.Average(),
-                wtF = worstFitness
-            };
         }
     }
 }

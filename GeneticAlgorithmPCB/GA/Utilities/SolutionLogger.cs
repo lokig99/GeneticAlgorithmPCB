@@ -6,10 +6,12 @@ namespace GeneticAlgorithmPCB.GA.Utilities
 {
     public class SolutionLogger : IGaCallback
     {
-        public void Callback(Solution genBestSolution, double bestFitness, double worstFitness, int generationNumber,
-            ICollection<double> generationIndividualsFitness)
+        public void Callback(Solution genBestSolution, double allBestFitness, double genBestFitness,
+            double genWorstFitness,
+            int generationNumber, ICollection<(Solution solution, double fitness)> population)
         {
-            Console.WriteLine($"Generation: {generationNumber}, best solution fitness: {bestFitness}");
+            Console.WriteLine(
+                $"Generation: {generationNumber}, generation best fitness: {genBestFitness}, all time best fitness: {allBestFitness}");
         }
     }
 }
