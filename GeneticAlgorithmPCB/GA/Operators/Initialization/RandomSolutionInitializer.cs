@@ -6,7 +6,8 @@ namespace GeneticAlgorithmPCB.GA.Operators.Initialization
     public class RandomSolutionInitializer : ISolutionInitializer
     {
         public Random RandomGenerator { get; set; } = new Random();
-        private const int MaxLength = 5;
+        public int MaxLength { get; set; } = 5;
+        public double InitialHeadToTargetProbability { get; set; } = 0.0;
 
 
         public void Initialize(in Solution solution)
@@ -15,15 +16,15 @@ namespace GeneticAlgorithmPCB.GA.Operators.Initialization
 
             for (var i = 0; i < solution.Paths.Length; i++)
             {
-                solution.Paths[i] = GeneratePath(solution, i);
+                solution.Paths[i] = GeneratePath(solution.Problem, i);
             }
         }
 
-        public Path GeneratePath(Solution solution, int pathIndex)
+        public Path GeneratePath(PcbProblem problem, int pathIndex)
         {
-            var (startPoint, endPoint) = solution.Problem.PointPairs[pathIndex];
+            var (startPoint, endPoint) = problem.PointPairs[pathIndex];
             var path = new Path(startPoint, endPoint);
-            var headToEndProb = RandomGenerator.Next(0, 100);
+            var headToEndProb = InitialHeadToTargetProbability;
             path.Segments.Add(RandomSegment(startPoint));
 
             while (!HasReachedTarget(path))

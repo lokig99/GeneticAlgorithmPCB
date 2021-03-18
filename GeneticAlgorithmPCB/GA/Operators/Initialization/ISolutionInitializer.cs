@@ -5,6 +5,6 @@ namespace GeneticAlgorithmPCB.GA.Operators.Initialization
     public interface ISolutionInitializer : IRandom
     {
         void Initialize(in Solution solution);
-        Path GeneratePath(Solution solution, int pathIndex);
+        Path GeneratePath(PcbProblem problem, int pathIndex);
     }
 }

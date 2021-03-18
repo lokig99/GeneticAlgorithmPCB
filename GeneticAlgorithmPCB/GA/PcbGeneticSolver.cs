@@ -10,15 +10,28 @@ using GeneticAlgorithmPCB.GA.Operators.Selection;
 
 namespace GeneticAlgorithmPCB.GA
 {
-    public class PcbGeneticSolver
+    public class PcbGeneticSolver : IRandom
     {
         public PcbProblem Problem { get; set; }
+        public Random RandomGenerator { get; set; } = new Random();
+        public double MutationProbability
+        {
+            get => _mutationProbability;
+            set
+            {
+                if (value < 0 || value > 1) throw new ArgumentOutOfRangeException(nameof(value));
+                _mutationProbability = value;
+            }
+        }
+
+        private double _mutationProbability = 0.5;
         private readonly IFitnessEvaluator _fitness;
         private readonly ISolutionInitializer _initializer;
         private readonly IMutationOperator _mutation;
         private readonly ISelectionOperator _selection;
         private readonly ICrossoverOperator _crossover;
         private readonly IGaCallback[] _callbacks;
+
 
         public PcbGeneticSolver(PcbProblem problem, IFitnessEvaluator fitness, ISolutionInitializer initializer,
             ISelectionOperator selection, ICrossoverOperator crossover, IMutationOperator mutation,
@@ -53,10 +66,13 @@ namespace GeneticAlgorithmPCB.GA
 
                 do
                 {
-                    var (parent1, _) = _selection.Selection(population, genBest, genWorstFitness);
-                    var child = _crossover.Crossover(parent1, parent1);
+                    var (parent1, parent2) = _selection.Selection(population, genBest, genWorstFitness);
+                    var child = _crossover.Crossover(parent1, parent2);
 
-                    _mutation.Mutation(child, _initializer);
+                    if (MutationProbability > RandomGenerator.NextDouble())
+                    {
+                        _mutation.Mutation(child, _initializer);
+                    }
 
                     var fitness = _fitness.Evaluate(child);
 
@@ -71,7 +87,7 @@ namespace GeneticAlgorithmPCB.GA
                 } while (newPopulation.Count != populationSize);
 
                 var (sol, fit) = currentBest.Value;
-                if (currentBest.Value.fitness < best.fitness)
+                if (fit < best.fitness)
                     best = (sol.Clone(), fit, generation);
 
                 population = newPopulation;

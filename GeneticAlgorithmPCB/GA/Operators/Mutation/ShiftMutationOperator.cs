@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
 namespace GeneticAlgorithmPCB.GA.Operators.Mutation
 {
-    public class BaseMutationOperator : IMutationOperator
+    public class ShiftMutationOperator : IMutationOperator
     {
-        private double _mutationChance = 0.5;
         private int _maxShift = 1;
         private int _mutatedIndex;
         private int _nextIndex;
@@ -25,41 +26,26 @@ namespace GeneticAlgorithmPCB.GA.Operators.Mutation
             }
         }
 
-        public double MutationChance
-        {
-            get => _mutationChance;
-            set
-            {
-                if (value < 0 || value > 1) throw new ArgumentOutOfRangeException(nameof(value));
-                _mutationChance = value;
-            }
-        }
-
         public Random RandomGenerator { get; set; } = new Random();
 
         public void Mutation(Solution solution, ISolutionInitializer initializer)
         {
-            for (var index = 0; index < solution.Paths.Length; index++)
-            {
-                var path = solution.Paths[index];
-                if (MutationChance < RandomGenerator.NextDouble()) continue;
+            var index = RandomGenerator.Next(solution.Paths.Length);
+            var path = solution.Paths[index];
 
-                _mutatedIndex = RandomGenerator.Next(path.Segments.Count);
-                _mutatedSegment = path.Segments[_mutatedIndex];
-                _previousSegment = (_prevIndex = _mutatedIndex - 1) < 0
-                    ? null
-                    : path.Segments[_prevIndex];
-                _nextSegment = (_nextIndex = _mutatedIndex + 1) >= path.Segments.Count
-                    ? null
-                    : path.Segments[_nextIndex];
+            _mutatedIndex = RandomGenerator.Next(path.Segments.Count);
+            _mutatedSegment = path.Segments[_mutatedIndex];
+            _previousSegment = (_prevIndex = _mutatedIndex - 1) < 0
+                ? null
+                : path.Segments[_prevIndex];
+            _nextSegment = (_nextIndex = _mutatedIndex + 1) >= path.Segments.Count
+                ? null
+                : path.Segments[_nextIndex];
 
-                if (ShiftSegment(path)) continue;
-                var newPath = initializer.GeneratePath(solution, index);
-                solution.Paths[index] = newPath;
-            }
+            ShiftSegment(path);
         }
 
-        private bool ModifyTrailingSegment(Path path, Direction shiftDirection, int shift)
+        private void ModifyTrailingSegment(Path path, Direction shiftDirection, int shift)
         {
             // trailing segment
             if (_previousSegment is null)
@@ -90,28 +76,24 @@ namespace GeneticAlgorithmPCB.GA.Operators.Mutation
                     _mutatedIndex -= 1;
                     _prevIndex -= 1;
 
-                    if (_prevIndex >= 0)
-                    {
-                        _previousSegment = path.Segments[_prevIndex];
+                    if (_prevIndex < 0) return;
 
-                        //bad
-                        if (!_previousSegment.EndPoint.Equals(_mutatedSegment.StartPoint))
-                        {
-                            //  Console.WriteLine("shouldn't happen :<");
-                            return false;
-                        }
+                    _previousSegment = path.Segments[_prevIndex];
 
-                        // if there is another segment in same line and direction -> merge
-                        if (_previousSegment.Direction == _mutatedSegment.Direction)
-                        {
-                            _mutatedSegment.StartPoint = _previousSegment.StartPoint;
-                            _mutatedSegment.Length += _previousSegment.Length;
+                    // if (!_previousSegment.EndPoint.Equals(_mutatedSegment.StartPoint))
+                    // {
+                    //     //  Console.WriteLine("shouldn't happen :<");
+                    //     return;
+                    // }
 
-                            path.Segments.RemoveAt(_prevIndex);
-                            _nextIndex -= 1;
-                            _mutatedIndex -= 1;
-                        }
-                    }
+                    // if there is another segment in same line and direction -> merge
+                    if (_previousSegment.Direction != _mutatedSegment.Direction) return;
+                    _mutatedSegment.StartPoint = _previousSegment.StartPoint;
+                    _mutatedSegment.Length += _previousSegment.Length;
+
+                    path.Segments.RemoveAt(_prevIndex);
+                    _nextIndex -= 1;
+                    _mutatedIndex -= 1;
                 }
                 else if (tmpLength < 0)
                 {
@@ -123,11 +105,9 @@ namespace GeneticAlgorithmPCB.GA.Operators.Mutation
                     _previousSegment.Length = tmpLength;
                 }
             }
-
-            return true;
         }
 
-        private bool ModifyFollowingSegment(Path path, Direction shiftDirection, int shift)
+        private void ModifyFollowingSegment(Path path, Direction shiftDirection, int shift)
         {
             // following segment
             if (_nextSegment is null)
@@ -150,7 +130,7 @@ namespace GeneticAlgorithmPCB.GA.Operators.Mutation
                     path.Segments.RemoveAt(_nextIndex);
 
                     // if there are  no following segments then finish
-                    if (_nextIndex >= path.Segments.Count) return true;
+                    if (_nextIndex >= path.Segments.Count) return;
 
                     _nextSegment = path.Segments[_nextIndex];
 
@@ -177,11 +157,9 @@ namespace GeneticAlgorithmPCB.GA.Operators.Mutation
                     }
                 }
             }
-
-            return true;
         }
 
-        private bool ShiftSegment(Path path)
+        private void ShiftSegment(Path path)
         {
             var shift = RandomGenerator.Next(1, MaxShift + 1);
             var shiftDirection = (RandomGenerator.Next(2), _mutatedSegment.Direction.GeneralDirection()) switch
@@ -202,22 +180,101 @@ namespace GeneticAlgorithmPCB.GA.Operators.Mutation
                 _ => new Point(x, y + shift)
             };
 
-            return ModifyFollowingSegment(path, shiftDirection, shift) &&
-                   ModifyTrailingSegment(path, shiftDirection, shift) && ValidatePath(path);
+            ModifyTrailingSegment(path, shiftDirection, shift);
+            ModifyFollowingSegment(path, shiftDirection, shift);
+            RepairPath(path);
         }
 
-        private static bool ValidatePath(Path path)
+        private static void RepairPath(Path path)
         {
-            for (var i = 1; i < path.Segments.Count - 1; i++)
+            var tmpSegments = new List<Segment>();
+            var firstSegment = path.Segments.First();
+
+            if (!path.StartPoint.Equals(firstSegment.StartPoint))
+            {
+                tmpSegments.AddRange(CreateConnection(path.StartPoint, firstSegment.StartPoint));
+            }
+
+            for (var i = 1; i < path.Segments.Count; i++)
             {
                 var prevSegment = path.Segments[i - 1];
                 var segment = path.Segments[i];
+                tmpSegments.Add(prevSegment);
 
-                if (!segment.StartPoint.Equals(prevSegment.EndPoint))
-                    return false;
+                if (prevSegment.EndPoint.Equals(segment.StartPoint)) continue;
+
+                var newSegments = CreateConnection(prevSegment.EndPoint, segment.StartPoint);
+                tmpSegments.AddRange(newSegments);
+
+                //     var dx = segment.StartPoint.X - prevSegment.EndPoint.X;
+                // var dy = segment.StartPoint.Y - prevSegment.EndPoint.Y;
+                //
+                // if (dx != 0)
+                // {
+                //     var xDir = dx > 0 ? Direction.Right : Direction.Left;
+                //     dx = Math.Abs(dx);
+                //     if (xDir == prevSegment.Direction)
+                //     {
+                //         prevSegment.Length += dx;
+                //     }
+                //     else
+                //     {
+                //         var xSegment = new Segment(prevSegment.EndPoint, xDir, dx);
+                //         tmpSegments.Add(xSegment);
+                //         prevSegment = xSegment;
+                //     }
+                // }
+
+                // if (dy == 0) continue;
+                // var yDir = dy > 0 ? Direction.Down : Direction.Up;
+                // dy = Math.Abs(dy);
+                //
+                // if (yDir == prevSegment.Direction)
+                // {
+                //     prevSegment.Length += dy;
+                // }
+                // else
+                // {
+                //     var ySegment = new Segment(prevSegment.EndPoint, yDir, dy);
+                //     tmpSegments.Add(ySegment);
+                // }
             }
 
-            return true;
+            var lastSegment = path.Segments.Last();
+            tmpSegments.Add(lastSegment);
+            if (!lastSegment.EndPoint.Equals(path.EndPoint))
+            {
+                tmpSegments.AddRange(CreateConnection(lastSegment.EndPoint, path.EndPoint));
+            }
+
+            path.Segments = tmpSegments;
+        }
+
+        private static IEnumerable<Segment> CreateConnection(Point startPoint, Point endPoint)
+        {
+            var (ex, ey) = endPoint;
+            var dx = ex - startPoint.X;
+            var dy = ey - startPoint.Y;
+            var segments = new List<Segment>(2);
+
+            if (dx != 0)
+            {
+                var xDir = dx > 0 ? Direction.Right : Direction.Left;
+                dx = Math.Abs(dx);
+
+                var xSegment = new Segment(startPoint, xDir, dx);
+                segments.Add(xSegment);
+                startPoint = xSegment.EndPoint;
+            }
+
+            if (dy == 0) return segments;
+
+            var yDir = dy > 0 ? Direction.Down : Direction.Up;
+            dy = Math.Abs(dy);
+
+            var ySegment = new Segment(startPoint, yDir, dy);
+            segments.Add(ySegment);
+            return segments;
         }
     }
 }

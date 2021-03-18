@@ -1,7 +1,6 @@
 ﻿using GeneticAlgorithmPCB.GA;
 using GeneticAlgorithmPCB.GA.Utilities;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -31,22 +30,24 @@ namespace GeneticAlgorithmPCB
             var problem = PcbProblem.LoadProblemFromFile(path);
             var serializer = new GaSerializer(problem);
             var random = new Random(seed);
+
             var solver = new PcbGeneticSolver(problem,
                 new WeightedEvaluator
                 {
-                    FragmentsOutsideBoardWeight = 500.0,
-                    IntersectionWeight = 10000.0,
-                    SegmentCountWeight = 10.0,
-                    SegmentsOutsideBoardWeight = 1000.0,
-                    TotalLengthWeight = 10.0
+                    FragmentsOutsideBoardWeight = 20.0,
+                    IntersectionWeight = 1000.0,
+                    SegmentCountWeight = 1,
+                    SegmentsOutsideBoardWeight = 10000,
+                    TotalLengthWeight = 0
                 },
                 new RandomSolutionInitializer
                 {
-                    RandomGenerator = random
+                    RandomGenerator = random,
+                    MaxLength = 4
                 },
-                new RouletteSelection()
+                new RouletteSelection
                 {
-                    Bias = 10E9,
+                    Bias = 10E4,
                     RandomGenerator = random
                 },
                 new UniformCrossoverOperator
@@ -54,15 +55,17 @@ namespace GeneticAlgorithmPCB
                     FirstParentProbability = 0.5,
                     RandomGenerator = random
                 },
-                new BaseMutationOperator()
+                new CombinedMutationOperator(random)
                 {
                     MaxShift = 16,
-                    MutationChance = 0.2,
-                    RandomGenerator = random
+                    RandomMutationChance = 0.5,
                 },
-                new IGaCallback[] { new SolutionLogger(), serializer });
+                new IGaCallback[] { new SolutionLogger(), serializer })
+            {
+                MutationProbability = 0.5
+            };
 
-            var (bestSolution, fitness, gen) = solver.Solve(250, 1500);
+            var (bestSolution, fitness, gen) = solver.Solve(250, 1000);
 
             serializer.WaitOngoingSaves();
 
@@ -82,31 +85,14 @@ namespace GeneticAlgorithmPCB
                     GaSerializer.CreateSerializedSolution(bestSolution, gen, fitness, includeProblemInfo: true);
                 var bestJsonPath = $"{TmpDir}/best.json";
                 var bestImgPath = $"{OutputDir}/best.png";
+                var videoPath = $"{OutputDir}/result.avi";
                 File.WriteAllText(bestJsonPath, JsonSerializer.Serialize(bestSerialized));
 
-                var pythonLauncherInfo = new ProcessStartInfo
-                {
-                    FileName = "python",
-                    UseShellExecute = false,
-                    Arguments = $"generator.py image {bestJsonPath} {bestImgPath}",
-                };
-
                 Console.WriteLine("Generating best solution image...");
-                var process = Process.Start(pythonLauncherInfo);
-                process?.WaitForExit();
-
-                //generate video of evolution
-                var videoPath = $"{OutputDir}/result.avi";
-                pythonLauncherInfo = new ProcessStartInfo
-                {
-                    FileName = "python",
-                    UseShellExecute = false,
-                    Arguments = $"generator.py video {serializer.FilePaths.First()} {videoPath}",
-                };
+                GaVisualizer.GenerateImage(bestJsonPath, bestImgPath);
 
                 Console.WriteLine("Generating video...");
-                process = Process.Start(pythonLauncherInfo);
-                process?.WaitForExit();
+                GaVisualizer.GenerateVideo(serializer.FilePaths.First(), videoPath);
             }
         }
 
