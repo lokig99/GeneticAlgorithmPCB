@@ -14,19 +14,19 @@ namespace GeneticAlgorithmPCB.Testing
     {
         private Solution _solution;
         private PcbProblem _problem;
-        private int _seed = 1;
+        private int _seed = 42;
 
         public MutationTest()
         {
             _problem = PcbProblem.LoadProblemFromFile("zad2.txt");
-            _solution = new Solution(_problem, new RandomSolutionInitializer { RandomGenerator = new Random(1) });
+            _solution = new Solution(_problem, new RandomInitializer { RandomGenerator = new Random(1), InitialHeadToTargetProbability = 1, MaxLength = 20 });
         }
 
         [Fact]
         public void MutationTestingGround()
         {
-            var mutation = new ShiftMutationOperator { RandomGenerator = new Random(_seed), MaxShift = 5 };
-            var init = new RandomSolutionInitializer { RandomGenerator = new Random(_seed) };
+            var mutation = new ShiftMutationBeta(new Random(_seed), 15);
+            var init = new RandomInitializer { RandomGenerator = new Random(_seed) };
             var pathJson = "xd.json";
             var pathImg = "xd.png";
 

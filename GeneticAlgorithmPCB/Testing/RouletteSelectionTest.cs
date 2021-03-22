@@ -26,7 +26,7 @@ namespace GeneticAlgorithmPCB.Testing
                 (new Point(3, 1), new Point(3, 3))
             };
 
-            var initializer = new RandomSolutionInitializer { RandomGenerator = new Random(Seed) };
+            var initializer = new RandomInitializer { RandomGenerator = new Random(Seed) };
             var problem = new PcbProblem(6, 6, points);
 
             var solutions = Enumerable.Range(0, 100)

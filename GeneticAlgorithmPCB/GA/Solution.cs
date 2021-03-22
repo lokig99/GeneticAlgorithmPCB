@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using GeneticAlgorithmPCB.GA.Interfaces;
 using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
@@ -9,6 +8,21 @@ namespace GeneticAlgorithmPCB.GA
 {
     public readonly struct Point
     {
+        public bool Equals(Point other)
+        {
+            return X == other.X && Y == other.Y;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is Point other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(X, Y);
+        }
+
         public readonly int X, Y;
 
         public Point(int x, int y)
@@ -33,6 +47,16 @@ namespace GeneticAlgorithmPCB.GA
         public override string ToString()
         {
             return $"[{X}, {Y}]";
+        }
+
+        public static bool operator ==(Point a, Point b)
+        {
+            return a.X == b.X && a.Y == b.Y;
+        }
+
+        public static bool operator !=(Point a, Point b)
+        {
+            return !(a == b);
         }
     }
 
@@ -118,7 +142,7 @@ namespace GeneticAlgorithmPCB.GA
         Horizontal
     }
 
-    static class DirectionMethods
+    internal static class DirectionMethods
     {
         public static Direction OppositeDirection(this Direction dir)
         {
@@ -136,11 +160,21 @@ namespace GeneticAlgorithmPCB.GA
         {
             return dir switch
             {
-                Direction.Left => Direction.Horizontal,
-                Direction.Right => Direction.Horizontal,
-                Direction.Up => Direction.Vertical,
-                Direction.Down => Direction.Vertical,
+                Direction.Left or Direction.Right => Direction.Horizontal,
+                Direction.Up or Direction.Down => Direction.Vertical,
                 _ => dir
+            };
+        }
+
+        public static (int dx, int dy) CoefficientTuple(this Direction dir)
+        {
+            return dir switch
+            {
+                Direction.Up => (0, -1),
+                Direction.Down => (0, 1),
+                Direction.Left => (-1, 0),
+                Direction.Right => (1, 0),
+                _ => (0, 0)
             };
         }
     }

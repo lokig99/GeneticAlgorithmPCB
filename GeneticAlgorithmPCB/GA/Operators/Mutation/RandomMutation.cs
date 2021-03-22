@@ -4,7 +4,7 @@ using GeneticAlgorithmPCB.GA.Operators.Initialization;
 
 namespace GeneticAlgorithmPCB.GA.Operators.Mutation
 {
-    public class RandomMutationOperator : IMutationOperator
+    public class RandomMutation : IMutationOperator
     {
         public Random RandomGenerator { get; set; } = new Random();
 

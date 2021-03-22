@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace GeneticAlgorithmPCB.GA.Operators.Initialization
 {
-    public class RandomSolutionInitializer : ISolutionInitializer
+    public class RandomInitializer : ISolutionInitializer
     {
         public Random RandomGenerator { get; set; } = new Random();
         public int MaxLength { get; set; } = 5;

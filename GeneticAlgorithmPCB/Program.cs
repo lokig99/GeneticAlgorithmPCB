@@ -31,23 +31,28 @@ namespace GeneticAlgorithmPCB
             var serializer = new GaSerializer(problem);
             var random = new Random(seed);
 
+            Console.Write("Enter population size (>1): ");
+            var popSize = int.Parse(Console.ReadLine() ?? "100");
+            Console.Write("Enter generation limit: ");
+            var genLimit = int.Parse(Console.ReadLine() ?? "100");
+
             var solver = new PcbGeneticSolver(problem,
-                new WeightedEvaluator
+                new WeightedEvaluator()
                 {
                     FragmentsOutsideBoardWeight = 20.0,
                     IntersectionWeight = 1000.0,
-                    SegmentCountWeight = 1,
-                    SegmentsOutsideBoardWeight = 10000,
-                    TotalLengthWeight = 0
+                    SegmentCountWeight = 10.0,
+                    SegmentsOutsideBoardWeight = 5000.0,
+                    TotalLengthWeight = 1
                 },
-                new RandomSolutionInitializer
+                new RandomInitializer
                 {
                     RandomGenerator = random,
-                    MaxLength = 4
+                    MaxLength = 8
                 },
-                new RouletteSelection
+                new RouletteSelection()
                 {
-                    Bias = 10E4,
+                    Bias = 10E9,
                     RandomGenerator = random
                 },
                 new UniformCrossoverOperator
@@ -55,42 +60,77 @@ namespace GeneticAlgorithmPCB
                     FirstParentProbability = 0.5,
                     RandomGenerator = random
                 },
-                new CombinedMutationOperator(random)
-                {
-                    MaxShift = 16,
-                    RandomMutationChance = 0.5,
-                },
+                new ShiftMutationAlphaBeta(16, random),
                 new IGaCallback[] { new SolutionLogger(), serializer })
             {
-                MutationProbability = 0.5
+                MutationProbability = 0.1
             };
 
-            var (bestSolution, fitness, gen) = solver.Solve(250, 1000);
+            var (bestSolution, fitness, gen) = solver.Solve(popSize, genLimit);
+
+
+            // var solver = new PcbGeneticSolver(problem,
+            //     new WeightedEvaluator()
+            //     {
+            //         FragmentsOutsideBoardWeight = 20.0,
+            //         IntersectionWeight = 1000.0,
+            //         SegmentCountWeight = 10.0,
+            //         SegmentsOutsideBoardWeight = 5000.0,
+            //         TotalLengthWeight = 1
+            //     },
+            //     new RandomInitializer
+            //     {
+            //         RandomGenerator = random,
+            //         MaxLength = 8
+            //     },
+            //     new DummySelectionOperator()
+            //     {
+            //         RandomGenerator = random
+            //     },
+            //     new DummyCrossoverOperator()
+            //     {
+            //         RandomGenerator = random
+            //     },
+            //     new DummyMutation
+            //     {
+            //         RandomGenerator = random
+            //     },
+            //     new IGaCallback[] { new SolutionLogger(), serializer })
+            // {
+            //     MutationProbability = 1.0
+            // };
+            //
+            // var (bestSolution, fitness, gen) = solver.Solve(2, 500 * 500);
+
 
             serializer.WaitOngoingSaves();
 
             Console.WriteLine($"Best result = {fitness} (gen = {gen})");
             Console.WriteLine($"Seed = {seed}");
 
-            GenerateSolutionVisualization();
+            GenerateBestSolutionImage();
+            // GenerateSolutionVideo();
 
             Console.WriteLine("Press enter to exit...");
             Console.ReadKey();
 
 
-            void GenerateSolutionVisualization()
+            void GenerateBestSolutionImage()
             {
-                // generate image of best solution
                 var bestSerialized =
                     GaSerializer.CreateSerializedSolution(bestSolution, gen, fitness, includeProblemInfo: true);
                 var bestJsonPath = $"{TmpDir}/best.json";
                 var bestImgPath = $"{OutputDir}/best.png";
-                var videoPath = $"{OutputDir}/result.avi";
                 File.WriteAllText(bestJsonPath, JsonSerializer.Serialize(bestSerialized));
 
                 Console.WriteLine("Generating best solution image...");
                 GaVisualizer.GenerateImage(bestJsonPath, bestImgPath);
+            }
 
+
+            void GenerateSolutionVideo()
+            {
+                var videoPath = $"{OutputDir}/result.avi";
                 Console.WriteLine("Generating video...");
                 GaVisualizer.GenerateVideo(serializer.FilePaths.First(), videoPath);
             }

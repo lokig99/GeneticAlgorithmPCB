@@ -11,7 +11,7 @@ namespace GeneticAlgorithmPCB.GA.Operators.Fitness
         public double SegmentsOutsideBoardWeight { get; set; } = 1.0;
         public double FragmentsOutsideBoardWeight { get; set; } = 1.0;
 
-        public double Evaluate(in Solution solution)
+        public virtual double Evaluate(Solution solution)
         {
             var (sobCount, fobLength) = solution.SegmentsOutsideBoardStats;
             var fitness = solution.Intersections * IntersectionWeight
@@ -21,6 +21,5 @@ namespace GeneticAlgorithmPCB.GA.Operators.Fitness
                           + fobLength * FragmentsOutsideBoardWeight;
             return fitness;
         }
-
     }
 }

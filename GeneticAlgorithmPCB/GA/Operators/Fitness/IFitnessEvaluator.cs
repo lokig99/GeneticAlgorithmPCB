@@ -2,6 +2,6 @@
 {
     public interface IFitnessEvaluator
     {
-        double Evaluate(in Solution solution);
+        double Evaluate(Solution solution);
     }
 }

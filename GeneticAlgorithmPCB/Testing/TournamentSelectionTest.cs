@@ -14,7 +14,7 @@ namespace GeneticAlgorithmPCB.Testing
         private readonly List<(Solution sol, double fit)> _population;
         private readonly PcbProblem _problem;
         private const int Seed = 1;
-        private readonly RandomSolutionInitializer _initializer;
+        private readonly RandomInitializer _initializer;
         private readonly IFitnessEvaluator _fitness;
 
         public TournamentSelectionTest()
@@ -25,7 +25,7 @@ namespace GeneticAlgorithmPCB.Testing
                 (new Point(3, 1), new Point(3, 3))
             };
 
-            _initializer = new RandomSolutionInitializer { RandomGenerator = new Random(Seed) };
+            _initializer = new RandomInitializer { RandomGenerator = new Random(Seed) };
             _problem = new PcbProblem(6, 6, points);
 
             var solutions = Enumerable.Range(0, 100)
