@@ -14,6 +14,7 @@ namespace GeneticAlgorithmPCB.GA
     {
         public PcbProblem Problem { get; set; }
         public Random RandomGenerator { get; set; } = new Random();
+
         public double MutationProbability
         {
             get => _mutationProbability;
@@ -24,18 +25,30 @@ namespace GeneticAlgorithmPCB.GA
             }
         }
 
+        public double CrossoverProbability
+        {
+            get => _crossoverProbability;
+            set
+            {
+                if (value < 0 || value > 1) throw new ArgumentOutOfRangeException(nameof(value));
+                _crossoverProbability = value;
+            }
+        }
+
+
+        private double _crossoverProbability = 1.0;
         private double _mutationProbability = 0.5;
         private readonly IFitnessEvaluator _fitness;
         private readonly ISolutionInitializer _initializer;
         private readonly IMutationOperator _mutation;
         private readonly ISelectionOperator _selection;
         private readonly ICrossoverOperator _crossover;
-        private readonly IGaCallback[] _callbacks;
+        private readonly ICollection<IGaCallback> _callbacks;
 
 
         public PcbGeneticSolver(PcbProblem problem, IFitnessEvaluator fitness, ISolutionInitializer initializer,
             ISelectionOperator selection, ICrossoverOperator crossover, IMutationOperator mutation,
-            IGaCallback[] callbacks = null)
+            ICollection<IGaCallback> callbacks = null)
         {
             Problem = problem;
             _fitness = fitness;
@@ -67,7 +80,10 @@ namespace GeneticAlgorithmPCB.GA
                 do
                 {
                     var (parent1, parent2) = _selection.Selection(population, genBest, genWorstFitness);
-                    var child = _crossover.Crossover(parent1, parent2);
+
+                    var child = CrossoverProbability > RandomGenerator.NextDouble()
+                        ? _crossover.Crossover(parent1, parent2)
+                        : parent1.Clone();
 
                     if (MutationProbability > RandomGenerator.NextDouble())
                     {

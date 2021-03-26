@@ -1,24 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using GeneticAlgorithmPCB.GA.Interfaces;
 
 namespace GeneticAlgorithmPCB.GA
 {
-    public struct PcbProblem
+    public class PcbProblem : ICloneable<PcbProblem>
     {
         public int BoardWidth { get; set; }
         public int BoardHeight { get; set; }
-        public List<(Point startPoint, Point endPoint)> PointPairs { get; set; }
+        public IReadOnlyList<(Point startPoint, Point endPoint)> PointPairs { get; set; }
 
-        public PcbProblem(int boardWidth, int boardHeight, List<(Point startPoint, Point endPoint)> points)
+        public PcbProblem(int boardWidth, int boardHeight, IReadOnlyList<(Point startPoint, Point endPoint)> points)
         {
             BoardWidth = boardWidth;
             BoardHeight = boardHeight;
             PointPairs = points;
         }
 
-        public readonly bool IsPointOutside(Point p)
+        public bool IsPointOutside(Point p)
         {
             var (x, y) = p;
             return x < 0 || y < 0 || x >= BoardWidth || y >= BoardHeight;
@@ -50,7 +52,13 @@ namespace GeneticAlgorithmPCB.GA
                 }
             }
 
-            return new PcbProblem(dimensions[0], dimensions[1], points);
+            return new PcbProblem(dimensions[0], dimensions[1], points.ToImmutableArray());
+        }
+
+        public PcbProblem Clone()
+        {
+            var pointsCopy = PointPairs.Select(p => p).ToImmutableArray();
+            return new PcbProblem(BoardWidth, BoardHeight, pointsCopy);
         }
     }
 }

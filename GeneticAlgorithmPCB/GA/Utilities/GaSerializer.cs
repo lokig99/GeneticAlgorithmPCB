@@ -14,7 +14,7 @@ namespace GeneticAlgorithmPCB.GA.Utilities
     public class GaSerializer : IGaCallback
     {
         private const int ChunkSize = 10_000;
-        private const string FileNameTemplate = "ga_history_";
+        public string FileNameTemplate { get; set; } = "ga_history_";
         private readonly LinkedList<object> _history;
         private int _chunkCount;
         private readonly LinkedList<Task> _tasks;
